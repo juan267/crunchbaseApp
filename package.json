@@ -1,0 +1,26 @@
+{
+  "name": "crunchbaseapp",
+  "version": "1.0.0",
+  "description": "using the crunchbase database",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juan267/crunchbaseApp.git"
+  },
+  "author": "juan267",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/juan267/crunchbaseApp/issues"
+  },
+  "homepage": "https://github.com/juan267/crunchbaseApp#readme",
+  "dependencies": {
+    "body-parser": "^1.15.0",
+    "consolidate": "^0.14.0",
+    "express": "^4.13.4",
+    "mongodb": "^2.1.13",
+    "nunjucks": "^2.4.1"
+  }
+}
