@@ -4,29 +4,72 @@ var engines = require('consolidate')
 var mongoClient = require('mongodb').MongoClient
 var assert = require('assert')
 var bodyParser = require('body-parser');
+var commandLineOptions = require('./js/commandLineOptions')
+var queryDocument = require('./js/query')
+var queryProyection = require('./js/proyection')
 
 app.engine('html', engines.nunjucks);
 app.set('view engine', 'html');
 app.set('views', __dirname + '/views')
 app.use(bodyParser.urlencoded({extended: true}))
 
-mongoClient.connect('mongodb://localhost:27017/', function(err, db) {
+var options = commandLineOptions();
+
+mongoClient.connect('mongodb://localhost:27017/crunchbase', function(err, db) {
 
   assert.equal(null, err)
   console.log('Succesfully conected to mongodb database')
+  console.log(options.firstYear)
 
-  app.get('/', function(req, res){
-    res.render("index")
-  })
+  if (options.clean === 'yes') {
+    console.log('Hoooll')
+    var query = {permalink: {$exists: true, $ne: null}}
+    var proyection = {permalink: 1, updated_at: 1}
+    var clean = true
+    var numToRemove = 0
+    var previous = {permalink: '', updated_at: ''}
+  } else {
+    var query = queryDocument(options)
+    var projection = queryProyection(options)
+    var clean = false
+  }
 
-  // var query = {'category_code': 'enterprise'}
+  var cursor = db.collection('companies').find(query)
+  clean ? cursor.sort({permalink: 1}) : cursor.sort([['founded_year', 1], ['employees', -1]])
+  // var matches = db.collection('companies').find(query).count()
+  cursor.project(projection)
+  cursor.skip(options.skip)
+  cursor.limit(options.limit)
 
-  // db.collection('companies').find(query).toArray(function(err, docs) {
-  //   assert.equal(null, err)
+  var numMatches = 0
 
-  //   docs.forEach(function(doc){
-  //     console.log(doc.name + "is a " + doc.category_code)
-  //   })
-  // })
-
+  cursor.forEach(
+    function(doc){
+      if (clean) {
+        if ((doc.permalink === previous.permalink) && (doc.updated_at === previous.updated_at)) {
+          console.log(doc.permalink)
+          numToRemove += 1
+          var filter = {_id: doc._id}
+            db.collection('companies').deleteOne(filter, function(err, res){
+              assert.equal(null, err)
+              console.log(res.result)
+            })
+        }
+        previous = doc
+      } else {
+        console.log(doc)
+        numMatches += 1
+      }
+    },
+    function(err){
+      assert.equal(null, err)
+      console.log("Query that was generated " + JSON.stringify(query))
+      console.log("Number of Matches " + JSON.stringify(numMatches))
+      console.log("remove items "+ numToRemove)
+      // return db.close()
+    }
+  )
 })
+
+
+
