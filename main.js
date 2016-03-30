@@ -26,7 +26,7 @@ mongoClient.connect('mongodb://localhost:27017/crunchbase', function(err, db) {
     var query = {permalink: {$exists: true, $ne: null}}
     var proyection = {permalink: 1, updated_at: 1}
     var clean = true
-    var numToRemove = 0
+    var markForDelete = []
     var previous = {permalink: '', updated_at: ''}
   } else {
     var query = queryDocument(options)
@@ -41,19 +41,13 @@ mongoClient.connect('mongodb://localhost:27017/crunchbase', function(err, db) {
   cursor.skip(options.skip)
   cursor.limit(options.limit)
 
-  var numMatches = 0
 
   cursor.forEach(
     function(doc){
       if (clean) {
         if ((doc.permalink === previous.permalink) && (doc.updated_at === previous.updated_at)) {
           console.log(doc.permalink)
-          numToRemove += 1
-          var filter = {_id: doc._id}
-            db.collection('companies').deleteOne(filter, function(err, res){
-              assert.equal(null, err)
-              console.log(res.result)
-            })
+          markForDelete.push(doc._id)
         }
         previous = doc
       } else {
@@ -63,10 +57,15 @@ mongoClient.connect('mongodb://localhost:27017/crunchbase', function(err, db) {
     },
     function(err){
       assert.equal(null, err)
+      var filter = {_id: {$in: markForDelete}}
       console.log("Query that was generated " + JSON.stringify(query))
       console.log("Number of Matches " + JSON.stringify(numMatches))
-      console.log("remove items "+ numToRemove)
-      // return db.close()
+      console.log("remove items "+ markForDelete.length)
+      db.collection('companies').deleteMany(filter, function(err, res){
+        assert(null, err)
+        console.log(res.result)
+        db.close()
+      })
     }
   )
 })
